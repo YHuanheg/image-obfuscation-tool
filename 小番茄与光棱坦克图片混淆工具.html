@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>小番茄 &amp; 光棱坦克 · 图片混淆工具</title>
+<style>
+  :root{
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --line:#e2e6ec;
+    --line-2:#eef1f5;
+    --text:#1e232b;
+    --muted:#697586;
+    --tomato:#e0523c;
+    --tomato-soft:#fdeeea;
+    --prism:#2f6fd0;
+    --prism-soft:#eaf2fd;
+    --more:#6d4fd6;
+    --more-soft:#f0ecfe;
+    --ok:#0f9d58;
+    --warn:#c47f17;
+    --err:#d23b3b;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(16,24,40,.05), 0 6px 18px -8px rgba(16,24,40,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--prism); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1160px; margin:0 auto; padding:28px 20px 80px}
+
+  /* ---------- 顶栏 ---------- */
+  header.top{display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px}
+  .logo{
+    width:46px;height:46px;border-radius:13px;flex:none;
+    background:linear-gradient(135deg,#e0523c,#f0913f 55%,#2f6fd0);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:22px;font-weight:700;box-shadow:var(--shadow)
+  }
+  h1{font-size:21px;margin:0 0 3px;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:13px;margin:0}
+
+  /* ---------- 标签页 ---------- */
+  nav.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:20px}
+  nav.tabs button{
+    appearance:none;border:0;background:transparent;cursor:pointer;
+    padding:10px 16px;font-size:14px;font-weight:600;color:var(--muted);
+    border-bottom:2px solid transparent;border-radius:8px 8px 0 0;font-family:inherit;
+    transition:.15s;
+  }
+  nav.tabs button:hover{color:var(--text);background:#ffffff88}
+  nav.tabs button.on{color:var(--text);border-bottom-color:currentColor}
+  nav.tabs button[data-tab="tomato"].on{color:var(--tomato)}
+  nav.tabs button[data-tab="prism"].on{color:var(--prism)}
+  nav.tabs button[data-tab="more"].on{color:var(--more)}
+  nav.tabs button[data-tab="theory"].on{color:var(--text)}
+  .tabpane{display:none}
+  .tabpane.on{display:block}
+
+  /* ---------- 卡片 ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+  .card h3{margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h3 .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+  .card p.hint{margin:0 0 14px;color:var(--muted);font-size:12.5px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .grid2 > .card, .grid2 > .panel{margin-bottom:0}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+
+  /* ---------- 拖放区 ---------- */
+  .dz{
+    border:1.5px dashed var(--line);border-radius:10px;background:#fafbfd;
+    padding:22px 16px;text-align:center;cursor:pointer;transition:.15s;color:var(--muted);
+  }
+  .dz:hover,.dz.over{border-color:var(--prism);background:var(--prism-soft);color:var(--prism)}
+  .dz .big{font-size:26px;line-height:1;margin-bottom:8px;color:var(--muted)}
+  .dz .big svg{display:block;margin:0 auto}
+  .dz:hover .big,.dz.over .big{color:var(--prism)}
+  .dz b{color:var(--text);font-weight:600}
+  .dz small{display:block;margin-top:4px;font-size:12px;opacity:.85}
+  .dz.has{border-style:solid;border-color:var(--line);background:#fff;padding:10px}
+  .dz.has .big{display:none}
+  .dz-thumb{max-width:100%;max-height:150px;border-radius:6px;display:block;margin:0 auto}
+  .dz-name{font-size:12px;color:var(--muted);margin-top:6px;word-break:break-all}
+
+  /* ---------- 控件 ---------- */
+  .ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px 16px;margin-top:4px}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld > label{font-size:12.5px;font-weight:600;color:#3d4756;display:flex;justify-content:space-between;gap:8px}
+  .fld > label .val{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+  input[type=text],input[type=number],select{
+    width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;
+    font:inherit;font-size:13px;color:var(--text);outline:none;transition:.15s;
+  }
+  input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--prism);box-shadow:0 0 0 3px #2f6fd022}
+  input[type=range]{width:100%;accent-color:var(--prism);margin:2px 0}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none;padding-top:16px}
+  .chk input{accent-color:var(--prism);width:15px;height:15px}
+  .row-inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  /* ---------- 按钮 ---------- */
+  .btn{
+    appearance:none;border:1px solid var(--line);background:#fff;color:var(--text);
+    padding:8px 15px;border-radius:9px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .btn:hover:not(:disabled){border-color:#c9d0da;background:#f7f9fc}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.primary{background:var(--text);border-color:var(--text);color:#fff}
+  .btn.primary:hover:not(:disabled){background:#000;border-color:#000}
+  .btn.t{background:var(--tomato);border-color:var(--tomato);color:#fff}
+  .btn.t:hover:not(:disabled){filter:brightness(.94)}
+  .btn.p{background:var(--prism);border-color:var(--prism);color:#fff}
+  .btn.p:hover:not(:disabled){filter:brightness(.94)}
+  .btn.m{background:var(--more);border-color:var(--more);color:#fff}
+  .btn.m:hover:not(:disabled){filter:brightness(.94)}
+  .btn.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px}
+  .bar .spacer{flex:1}
+
+  /* ---------- 结果网格 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:12px;margin-top:16px}
+  .item{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+  .item .thumb{height:130px;background:
+      linear-gradient(45deg,#eef1f5 25%,transparent 25%,transparent 75%,#eef1f5 75%),
+      linear-gradient(45deg,#eef1f5 25%,#fff 25%,#fff 75%,#eef1f5 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;
+    display:flex;align-items:center;justify-content:center;padding:6px}
+  .item .thumb img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .item .body{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px}
+  .item .nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .dim{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .item .st{font-size:11px;font-weight:600}
+  .st.wait{color:var(--muted)} .st.run{color:var(--prism)} .st.ok{color:var(--ok)} .st.err{color:var(--err)}
+  .item .acts{padding:0 10px 10px}
+
+  /* ---------- 预览画布 ---------- */
+  .cvsbox{
+    background:
+      linear-gradient(45deg,#eef1f5 25%,transparent 25%,transparent 75%,#eef1f5 75%),
+      linear-gradient(45deg,#eef1f5 25%,#fff 25%,#fff 75%,#eef1f5 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;
+    border:1px solid var(--line);border-radius:10px;padding:10px;
+    display:flex;align-items:center;justify-content:center;min-height:170px;overflow:auto;
+  }
+  .cvsbox canvas{max-width:100%;height:auto;display:block;box-shadow:0 1px 4px rgba(0,0,0,.12);background:#fff}
+  .cvsbox.fit canvas{max-height:380px}
+
+  .seg{display:inline-flex;background:#eef1f5;border-radius:9px;padding:3px;gap:3px}
+  .seg button{appearance:none;border:0;background:transparent;padding:6px 14px;border-radius:7px;font:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+
+  .note{background:#f8fafc;border-left:3px solid var(--line);border-radius:0 8px 8px 0;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-top:12px}
+  .note b{color:var(--text)}
+  .note.warn{background:#fffaf0;border-left-color:var(--warn)}
+  .note.err{background:#fef3f2;border-left-color:var(--err)}
+  .prog{height:6px;background:#eef1f5;border-radius:99px;overflow:hidden;margin-top:14px;display:none}
+  .prog.on{display:block}
+  .prog i{display:block;height:100%;width:0;background:var(--prism);transition:width .12s linear}
+
+  table.t{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  table.t th,table.t td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  table.t th{background:#f8fafc;font-weight:600;white-space:nowrap}
+  table.t td code,code.k{background:#f2f5f9;border-radius:5px;padding:1px 6px;font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:12.3px}
+  pre.code{background:#1f2430;color:#e6e9ef;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.3px;line-height:1.6;
+    font-family:ui-monospace,Consolas,"Courier New",monospace;margin:12px 0}
+  pre.code .c{color:#8b95a8}
+  h4.sec{font-size:14px;margin:22px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line-2)}
+  ul.tight{margin:8px 0;padding-left:22px}
+  ul.tight li{margin:4px 0}
+  .kbd{background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="logo">&#9635;</div>
+    <div>
+      <h1>小番茄 &amp; 光棱坦克 · 图片混淆工具</h1>
+      <p class="sub">纯前端单文件 · 零依赖 · 图片不上传，全部在本地浏览器完成</p>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="tomato" class="on">小番茄图片混淆</button>
+    <button data-tab="prism">光棱坦克图片工厂</button>
+    <button data-tab="more">更多混淆算法</button>
+    <button data-tab="theory">原理说明</button>
+  </nav>
+
+  <!-- ============================================================ 小番茄 -->
+  <section class="tabpane on" id="pane-tomato">
+    <div class="card">
+      <h3><span class="dot" style="color:var(--tomato)"></span>小番茄图片混淆</h3>
+      <p class="hint">
+        基于<strong>希尔伯特（Hilbert）空间填充曲线</strong>重排全部像素，并沿曲线做一次
+        <strong>黄金分割循环位移</strong>。整图被彻底打散，肉眼无法辨认；用相同密钥反向操作即可无损还原。
+      </p>
+
+      <div class="dz" id="tm-dz">
+        <div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></div>
+        <div><b>点击选择</b> 或把图片拖到这里</div>
+        <small>支持多张 · PNG / JPG / WEBP / GIF / BMP</small>
+      </div>
+      <input type="file" id="tm-file" accept="image/*" multiple hidden />
+
+      <div class="ctrls" style="margin-top:16px">
+        <div class="fld">
+          <label>偏移密钥 <span class="val" id="tm-key-v">1.000</span></label>
+          <input type="number" id="tm-key" value="1" step="0.001" min="-1000" max="1000" />
+        </div>
+        <div class="fld">
+          <label>输出格式</label>
+          <select id="tm-fmt">
+            <option value="png" selected>PNG（无损，推荐）</option>
+            <option value="jpeg">JPEG 质量 0.95（与原工具一致）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="note">
+        <b>密钥必须一致才能还原。</b>密钥 <code class="k">1.000</code> 等价于原始小番茄工具的默认偏移
+        <code class="k">round(0.618 &times; W &times; H)</code>；输入 <code class="k">0.618</code> 可得
+        <code class="k">round(0.618&sup2; &times; W &times; H)</code>。
+      </div>
+      <div class="note warn">
+        <b>请保持 PNG 输出。</b>混淆后的图像是高频噪声纹理，JPEG 的 DCT 量化会把它压坏
+        —— 实测「混淆 → JPEG → 解混淆」的平均像素误差约 <b>32/255</b>（PNG 为 <b>0</b>，逐像素无损）。
+        只有在必须与旧工具产物保持一致时才改用 JPEG。
+      </div>
+      <div class="note">
+        <b>关于透明图：</b>浏览器 canvas 对半透明像素会做 alpha 预乘，<b>含半透明区域的图片</b>往返会有
+        ±2 左右的精度损失；<b>不透明图片（绝大多数照片、截图）不受影响，完全无损</b>。
+      </div>
+
+      <div class="bar">
+        <button class="btn t" id="tm-enc">混淆</button>
+        <button class="btn" id="tm-dec">解混淆</button>
+        <div class="spacer"></div>
+        <button class="btn" id="tm-zip" disabled>打包下载</button>
+        <button class="btn" id="tm-clear">清空</button>
+      </div>
+
+      <div class="prog" id="tm-prog"><i></i></div>
+      <div class="grid" id="tm-grid"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 光棱坦克 -->
+  <section class="tabpane" id="pane-prism">
+    <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="seg" id="pr-mode">
+        <button data-m="enc" class="on">制作（编码）</button>
+        <button data-m="dec">显形（解码）</button>
+      </div>
+      <span class="sub" style="margin:0" id="pr-modedesc">
+        把「里图」压进暗部、把「表图」放进亮部，按棋盘格交错 —— 正常看是表图，调阈值后显出里图。
+      </span>
+    </div>
+
+    <!-- 编码 -->
+    <div id="pr-enc">
+      <div class="grid2">
+        <div class="panel">
+          <h3><span class="dot" style="color:var(--prism)"></span>里图（隐藏图 · 暗部）</h3>
+          <p class="hint" style="margin-bottom:12px">这张图会被压缩到低亮度区间，正常肉眼看不见。</p>
+          <div class="dz" id="in-dz"><div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg></div><div><b>点击选择</b> 或拖入里图</div><small>PNG / JPG</small></div>
+          <input type="file" id="in-file" accept="image/*" hidden />
+          <div class="ctrls" style="margin-top:14px">
+            <div class="fld">
+              <label>里图阈值 <span class="val" id="in-th-v">24</span></label>
+              <input type="range" id="in-th" min="2" max="128" step="1" value="24" />
+            </div>
+            <div class="fld">
+              <label>对比度 <span class="val" id="in-ct-v">0</span></label>
+              <input type="range" id="in-ct" min="-255" max="255" step="5" value="0" />
+            </div>
+            <label class="chk"><input type="checkbox" id="in-gray" /> 转为灰度</label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3><span class="dot" style="color:var(--prism)"></span>表图（可见图 · 亮部）</h3>
+          <p class="hint" style="margin-bottom:12px">正常观看时看到的画面，会被塞进高亮度区间。</p>
+          <div class="dz" id="cv-dz"><div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-4.5 4 3.5 3-2.5 4 3.5"/></svg></div><div><b>点击选择</b> 或拖入表图</div><small>PNG / JPG</small></div>
+          <input type="file" id="cv-file" accept="image/*" hidden />
+          <div class="ctrls" style="margin-top:14px">
+            <div class="fld">
+              <label>表图阈值 <span class="val" id="cv-th-v">42</span></label>
+              <input type="range" id="cv-th" min="2" max="200" step="1" value="42" />
+            </div>
+            <div class="fld">
+              <label>对比度 <span class="val" id="cv-ct-v">0</span></label>
+              <input type="range" id="cv-ct" min="-255" max="255" step="5" value="0" />
+            </div>
+            <label class="chk"><input type="checkbox" id="cv-gray" checked /> 转为灰度</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot" style="color:var(--prism)"></span>交错方式与限制</h3>
+        <p class="hint">两图阈值不能过近（里图阈值 <b>必须小于</b> 表图阈值），否则显形时会互相串色。</p>
+        <div class="ctrls">
+          <div class="fld">
+            <label>交错方向</label>
+            <select id="bl-dir"><option value="row" selected>行优先（对角棋盘，推荐）</option><option value="col">列优先</option></select>
+          </div>
+          <div class="fld">
+            <label>斜率 slope <span class="val" id="bl-slope-v">1</span></label>
+            <input type="number" id="bl-slope" value="1" step="0.1" min="0.1" max="64" />
+          </div>
+          <div class="fld">
+            <label>间隔 gap <span class="val" id="bl-gap-v">1</span></label>
+            <input type="number" id="bl-gap" value="1" step="1" min="1" max="32" />
+          </div>
+          <div class="fld">
+            <label>最大边长 maxSize <span class="val" id="bl-max-v">1200</span></label>
+            <input type="number" id="bl-max" value="1200" step="100" min="64" max="10000" />
+          </div>
+          <div class="fld">
+            <label>输出格式</label>
+            <select id="bl-fmt"><option value="png" selected>PNG（无损，推荐）</option><option value="jpeg">JPEG 质量 0.95</option></select>
+          </div>
+          <label class="chk"><input type="checkbox" id="bl-rev" /> 反色（交换明暗区）</label>
+        </div>
+        <div class="note">
+          <b>gap / slope 决定图案密度。</b>gap=1、slope=1 时是 <code class="k">(x+y) mod 2 == 0</code> 的对角棋盘；
+          调大 gap 或 slope 会让交错纹路变粗、抗压能力更强、但两图互相干扰也更明显。
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="panel">
+          <h3>合成结果</h3>
+          <div class="cvsbox fit"><canvas id="out-cvs"></canvas></div>
+          <div class="bar">
+            <button class="btn p" id="pr-save" disabled>保存合成图</button>
+            <span class="sub" id="out-info" style="margin:0">等待两张图就绪…</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>显形测试</h3>
+          <div class="cvsbox fit"><canvas id="out-test"></canvas></div>
+          <div class="bar">
+            <button class="btn sm" id="ts-inner">看里图</button>
+            <button class="btn sm" id="ts-cover">看表图</button>
+            <span class="sub" id="out-test-info" style="margin:0"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 解码 -->
+    <div id="pr-dec" style="display:none">
+      <div class="grid2">
+        <div class="panel">
+          <h3><span class="dot" style="color:var(--prism)"></span>载入混淆图</h3>
+          <div class="dz" id="dc-dz"><div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/></svg></div><div><b>点击选择</b> 或拖入图片</div><small>拖入后拖动滑杆即可实时显形</small></div>
+          <input type="file" id="dc-file" accept="image/*" hidden />
+          <div class="bar">
+            <button class="btn p" id="dc-save" disabled>保存显形结果</button>
+            <button class="btn sm" id="dc-orig" disabled>保存原图</button>
+          </div>
+          <div class="note" style="margin-top:14px">
+            <b>调参口诀：</b>阈值区间选中哪一段亮度，就显示哪一张图。<br />
+            · 里图藏在暗部 <code class="k">[0, Ti]</code> → 区间取 <code class="k">0 ~ Ti</code>（默认 <code class="k">0 ~ 24</code>）<br />
+            · 表图占据亮部 <code class="k">[Tc, 255]</code> → 区间取 <code class="k">Tc ~ 255</code>（默认 <code class="k">42 ~ 255</code>）
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>显形参数</h3>
+          <div class="ctrls">
+            <div class="fld">
+              <label>下阈值 <span class="val" id="dc-lo-v">0</span></label>
+              <input type="range" id="dc-lo" min="0" max="255" step="1" value="0" />
+            </div>
+            <div class="fld">
+              <label>上阈值 <span class="val" id="dc-hi-v">24</span></label>
+              <input type="range" id="dc-hi" min="0" max="255" step="1" value="24" />
+            </div>
+            <div class="fld">
+              <label>遮罩填充方式</label>
+              <select id="dc-method">
+                <option value="ltavg" selected>ltavg · 左上邻域均值（推荐）</option>
+                <option value="lcopy">lcopy · 复制左邻</option>
+                <option value="tcopy">tcopy · 复制上邻</option>
+                <option value="black">black · 纯黑</option>
+                <option value="white">white · 纯白</option>
+                <option value="transparent">transparent · 透明</option>
+              </select>
+            </div>
+            <div class="fld">
+              <label>对比度 <span class="val" id="dc-ct-v">0</span></label>
+              <input type="range" id="dc-ct" min="-255" max="255" step="5" value="0" />
+            </div>
+          </div>
+          <div class="bar">
+            <button class="btn sm" id="dc-p1">看里图 0~Ti</button>
+            <button class="btn sm" id="dc-p2">看表图 Tc~255</button>
+            <button class="btn sm" id="dc-p3">自定义 0~255</button>
+            <button class="btn sm" id="dc-fit">适应窗口</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h3>显形结果 <span class="sub" id="dc-info" style="margin:0;font-weight:400"></span></h3>
+        <div class="cvsbox fit" id="dc-box"><canvas id="dc-cvs"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 更多算法 -->
+  <section class="tabpane" id="pane-more">
+    <div class="card">
+      <h3><span class="dot" style="color:var(--more)"></span>更多混淆算法</h3>
+      <p class="hint">
+        移植自开源库 <b>ObfuscationUtils</b>（作者 Uiloalxise，MIT）的经典混淆方式。
+        其中 PicEncrypt 系列基于 <b>Logistic 混沌映射</b>，Block / 行像素 / 逐像素基于 <b>MD5 密钥置乱</b>。
+      </p>
+
+      <div class="dz" id="mr-dz">
+        <div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></div>
+        <div><b>点击选择</b> 或把图片拖到这里</div>
+        <small>支持多张，逐张处理</small>
+      </div>
+      <input type="file" id="mr-file" accept="image/*" multiple hidden />
+
+      <div class="ctrls" style="margin-top:16px">
+        <div class="fld">
+          <label>算法</label>
+          <select id="mr-alg">
+            <option value="picRow" selected>PicEncrypt 行混淆（混沌映射，按列置换）</option>
+            <option value="picRowCol">PicEncrypt 行列混淆（混沌映射，行列各置换一次）</option>
+            <option value="block">方块混淆 Block（32&times;32 块置乱）</option>
+            <option value="rowPixel">行像素混淆 RowPixel</option>
+            <option value="perPixel">逐像素混淆 PerPixel</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>密钥 <span class="val" id="mr-key-v"></span></label>
+          <input type="text" id="mr-key" value="0.114514" />
+        </div>
+        <div class="fld">
+          <label>输出格式</label>
+          <select id="mr-fmt"><option value="png" selected>PNG（无损，推荐）</option><option value="jpeg">JPEG 质量 0.95</option></select>
+        </div>
+      </div>
+
+      <div class="note" id="mr-note">
+        <b>PicEncrypt 系列</b>的密钥必须是 <b>0~1 之间的浮点数</b>（默认 <code class="k">0.114514</code>），它是 Logistic 映射的初始值，
+        不同初始值会产生完全不同的置换序列。
+      </div>
+
+      <div class="bar">
+        <button class="btn m" id="mr-enc">混淆</button>
+        <button class="btn" id="mr-dec">解混淆</button>
+        <div class="spacer"></div>
+        <button class="btn" id="mr-zip" disabled>打包下载</button>
+        <button class="btn" id="mr-clear">清空</button>
+      </div>
+
+      <div class="prog" id="mr-prog"><i></i></div>
+      <div class="grid" id="mr-grid"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 原理 -->
+  <section class="tabpane" id="pane-theory">
+    <div class="card">
+      <h3><span class="dot"></span>一、小番茄图片混淆</h3>
+      <p class="hint">本质是一个 <b>像素索引的循环置换</b>，不含加密密钥的密码学强度，属于「混淆」而非「加密」。</p>
+
+      <h4 class="sec">1. 希尔伯特曲线把二维图像拉成一维</h4>
+      <p>
+        <code class="k">gilbert2d(W, H)</code> 递归生成一条<b>空间填充曲线</b>：它走遍每一个像素点且不重复，并且
+        <b>空间上相邻的点在序列中也相邻</b>。得到一个索引数组 <code class="k">curve[]</code>，长度为
+        <code class="k">N = W &times; H</code>，其中 <code class="k">curve[i]</code> 表示曲线的第 <i>i</i> 步落在哪个像素上。
+      </p>
+
+      <h4 class="sec">2. 黄金分割偏移 + 整条曲线的循环位移</h4>
+<pre class="code"><span class="c">// φ' = (√5 − 1) / 2 ≈ 0.6180339887</span>
+offset = round( φ' &times; W &times; H &times; key )
+
+<span class="c">// 混淆：把曲线上第 i 个像素搬到第 (i + offset) 个位置</span>
+out[ curve[(i + offset) mod N] ] = src[ curve[i] ]
+
+<span class="c">// 解混淆：反过来搬</span>
+out[ curve[i] ] = src[ curve[(i + offset) mod N] ]</pre>
+      <p>
+        因为「沿曲线位移」而不是「按行位移」，曲线的连续性把位移带来的结构痕迹彻底打散 ——
+        这是它比简单行列置换更难看出规律的原因。同时它<b>完全可逆且不丢像素</b>（前提是输出用无损格式）。
+      </p>
+      <table class="t">
+        <tr><th>项目</th><th>说明</th></tr>
+        <tr><td>曲线生成</td><td>递归分形，按宽高比 <code class="k">2w &gt; 3h</code> 切换切分策略，<code class="k">w==1</code> 或 <code class="k">h==1</code> 时线性收尾</td></tr>
+        <tr><td>偏移量</td><td><code class="k">round(0.6180339887 &times; N &times; key)</code>，再对 <code class="k">N</code> 取模</td></tr>
+        <tr><td>时间复杂度</td><td>O(N)，N 为像素总数</td></tr>
+        <tr><td>可逆性</td><td>是（同一密钥取逆置换）</td></tr>
+        <tr><td>安全性</td><td><b>弱</b>：密钥只是一个标量，已知算法可暴力枚举</td></tr>
+      </table>
+      <div class="note warn">
+        <b>格式坑：</b>原始工具输出固定为 JPEG（质量 0.95），有损压缩会让每个像素产生 ±2 左右误差，
+        反复「混淆→解混淆」会累积噪点。<b>本工具默认输出 PNG</b>，做到真正无损；
+        若必须与旧工具互通，再切到 JPEG 选项。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="color:var(--prism)"></span>二、光棱坦克（Mirage / Prism）</h3>
+      <p class="hint">基于 <b>灰度值分离</b> + <b>像素交错</b> 的伪隐写：一张图承载两张图，靠人眼/显示阈值的差异切换。</p>
+
+      <h4 class="sec">1. 按棋盘格决定每个像素归谁</h4>
+<pre class="code">isCover(x, y):
+  slope == 0        →  (isRow ? y : x) mod (gap + 1) &lt; gap
+  isRow  (行优先)   →  (y / slope + x) mod (gap + 1) &lt; gap
+  !isRow (列优先)   →  (x / slope + y) mod (gap + 1) &lt; gap</pre>
+      <p>默认 <code class="k">slope=1, gap=1, 行优先</code>，即 <code class="k">(x + y) mod 2 == 0</code> 的对角棋盘：一半像素给表图，一半给里图。</p>
+
+      <h4 class="sec">2. 把两张图的亮度压进互不重叠的区间</h4>
+<pre class="code"><span class="c">// 里图 → 低亮度区间 [0, Ti]</span>
+inner'(v) = floor( v &times; Ti / 255 )
+
+<span class="c">// 表图 → 高亮度区间 [Tc, 255]</span>
+cover'(v) = floor( Tc + v &times; (255 − Tc) / 255 )
+
+<span class="c">// 反色模式则把两式对调：inner'(v) = 255 − Ti + v·Ti/255, cover'(v) = v·(255 − Tc)/255</span></pre>
+      <p>
+        默认 <code class="k">Ti = 24</code>、<code class="k">Tc = 42</code>。于是输出图里：
+        <b>里图像素亮度必在 [0,24]</b>，<b>表图像素亮度必在 [42,255]</b> —— 两个区间<b>零重叠</b>，
+        这就是解码时能把它们干净分开的根本原因。
+      </p>
+
+      <h4 class="sec">3. 为什么「正常看是表图」</h4>
+      <p>
+        人眼在正常距离下会对相邻像素做空间平均。棋盘上一半是暗的里图像素、一半是亮的表图像素，
+        平均后亮度约为 <code class="k">(inner' + cover') / 2</code>，主要被高亮的表图主导，
+        因此<b>第一眼看到的是表图（略暗）</b>，里图被「淹没」在平均过程里。
+      </p>
+
+      <h4 class="sec">4. 解码：用亮度阈值把两张图拆开</h4>
+<pre class="code">l = 0.299 R + 0.587 G + 0.114 B          <span class="c">// 感知亮度（Luma）</span>
+
+if (l &gt;= lowerThreshold &amp;&amp; l &lt;= higherThreshold)
+      v' = clamp( (v − lower) &times; 255 / (higher − lower) )   <span class="c">// 命中区间 → 拉伸到满量程</span>
+else
+      用邻域填充（black / white / transparent / lcopy / tcopy / ltavg）</pre>
+      <table class="t">
+        <tr><th>想看的图</th><th>阈值区间</th><th>原因</th></tr>
+        <tr><td>里图</td><td><code class="k">0 ~ Ti</code>（如 0 ~ 24）</td><td>里图像素全在暗部，被拉伸到 0~255 后清晰可见</td></tr>
+        <tr><td>表图</td><td><code class="k">Tc ~ 255</code>（如 42 ~ 255）</td><td>表图像素全在亮部；暗部的里图像素被邻域填充抹平</td></tr>
+      </table>
+      <p>
+        <b>阈值必须对准生成时用的 Ti / Tc</b>：区间取错（例如用 <code class="k">25 ~ 255</code> 而非 <code class="k">42 ~ 255</code>）
+        不会看错图，但会引入固定的亮度偏移与对比度压缩，画面发灰。
+      </p>
+      <p>
+        <code class="k">ltavg</code> 会从左、上、左上三个<b>已处理过的</b>邻居取平均来填补未命中区域，
+        一次从左到右、从上到下的扫描即可把整片棋盘纹路抹成平滑背景，是默认且效果最好的填充方式。
+      </p>
+      <div class="note warn">
+        <b>传输坑：</b>JPEG 的色度二次采样会破坏逐像素的棋盘结构（灰度图受影响小，彩色图会明显串色）；
+        社交平台还会二次压缩并可能丢失 PNG 的 tEXt 元数据。因此<b>本工具默认输出 PNG</b>，
+        发送时务必勾选「原图」。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="color:var(--more)"></span>三、更多混淆算法</h3>
+
+      <h4 class="sec">PicEncrypt 系列 · Logistic 混沌映射</h4>
+<pre class="code">x&#8320; = key                      <span class="c">// 必须是 (0, 1) 之间的浮点数</span>
+x&#8345;&#8330;&#8321; = 3.9999999 &times; x&#8345; &times; (1 − x&#8345;)
+
+<span class="c">// 把 [值, 下标] 按值升序排序，取下标序列就是置换表 positions[]</span>
+positions = argsort( [x&#8320;, x&#8321;, ..., x&#8345;&#8331;&#8321;] )</pre>
+      <ul class="tight">
+        <li><b>行混淆：</b>按 <code class="k">positions</code> 置换<b>列</b>（整列搬运，尺寸不变）</li>
+        <li><b>行列混淆：</b>逐行推进混沌序列 x 做行内置换，再逐列推进做列内置换；解密时顺序颠倒（先列后行）</li>
+      </ul>
+      <p>混沌系统对初值极度敏感，密钥差 <code class="k">1e-9</code> 就会得到完全不同的置换表 —— 比小番茄的单一标量偏移更难猜测。</p>
+
+      <h4 class="sec">MD5 密钥置乱系列</h4>
+<pre class="code"><span class="c">// Fisher–Yates 洗牌，牌面随机数来自 MD5(key + i)</span>
+for i = len−1 → 1:
+    rand = parseInt( MD5(key + i).hex[0..6], 16 ) mod (i + 1)
+    swap(arr[rand], arr[i])</pre>
+      <ul class="tight">
+        <li><b>Block 方块混淆：</b>把图补边到 32 的倍数后切成 32&times;32 块，用两套洗牌表分别置换块的行、列坐标（<b>输出尺寸可能变大</b>）</li>
+        <li><b>RowPixel 行像素：</b>按 <code class="k">xArray[(xArray[j % W] + i) % W]</code> 在行内打乱像素列</li>
+        <li><b>PerPixel 逐像素：</b>在行、列两个方向同时置换，打散最彻底</li>
+      </ul>
+
+      <h4 class="sec">四种方式对比</h4>
+      <table class="t">
+        <tr><th>算法</th><th>密钥</th><th>尺寸变化</th><th>混淆强度</th><th>速度</th></tr>
+        <tr><td>小番茄</td><td>数字（偏移系数）</td><td>不变</td><td>中高（曲线置换）</td><td>快</td></tr>
+        <tr><td>光棱坦克</td><td>无需密钥（靠双层图）</td><td>不变</td><td>隐写，非混淆</td><td>快</td></tr>
+        <tr><td>PicEncrypt 行</td><td>浮点数</td><td>不变</td><td>中</td><td>快</td></tr>
+        <tr><td>PicEncrypt 行列</td><td>浮点数</td><td>不变</td><td>高</td><td>较快</td></tr>
+        <tr><td>Block 方块</td><td>任意字符串</td><td><b>可能变大</b></td><td>中</td><td>快</td></tr>
+        <tr><td>RowPixel</td><td>任意字符串</td><td>不变</td><td>低（行内打乱）</td><td>快</td></tr>
+        <tr><td>PerPixel</td><td>任意字符串</td><td>不变</td><td>高</td><td>快</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot"></span>参考来源</h3>
+      <ul class="tight">
+        <li><a href="https://github.com/MadLife77/xiaofanqie-image-confuse" target="_blank" rel="noreferrer">MadLife77 / xiaofanqie-image-confuse</a> —— 小番茄图片混淆批量处理工具（Hilbert + 黄金分割偏移）</li>
+        <li><a href="https://github.com/TankFactory/Mirage_Decode" target="_blank" rel="noreferrer">TankFactory / Mirage_Decode</a> —— 光棱坦克工厂（灰度分离 + 像素交错），在线版 <a href="https://prism.uyanide.com/" target="_blank" rel="noreferrer">prism.uyanide.com</a></li>
+        <li><a href="https://github.com/2195517546/ObfuscationUtils" target="_blank" rel="noreferrer">2195517546 / ObfuscationUtils</a> —— Java 图片混淆工具库（小番茄 / 方块 / 行像素 / 逐像素 / PicEncrypt 行列），作者 Uiloalxise，MIT</li>
+      </ul>
+      <div class="note err">
+        <b>法律与用途提示：</b>本工具仅用于图像混淆/隐写的技术学习与合法的版权保护、隐私遮挡等场景。
+        请勿用于传播违法违规内容、规避平台审核或规避他人版权保护。使用者需自行承担全部责任。
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+ * 0. 通用工具
+ * =======================================================================*/
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(2) + ' MB';
+}
+
+function readAsDataURL(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(new Error('读取文件失败'));
+    fr.readAsDataURL(file);
+  });
+}
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('图片解码失败（浏览器不支持该格式？）'));
+    img.src = src;
+  });
+}
+function imageToImageData(img) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, w, h);
+}
+function imageDataToCanvas(d) {
+  const c = document.createElement('canvas');
+  c.width = d.width; c.height = d.height;
+  c.getContext('2d', { willReadFrequently: true }).putImageData(d, 0, 0);
+  return c;
+}
+function canvasToBlob(c, type, quality) {
+  return new Promise((res, rej) => {
+    c.toBlob(b => (b ? res(b) : rej(new Error('导出图片失败'))), type, quality);
+  });
+}
+function drawToCanvas(cvs, data) {
+  cvs.width = data.width; cvs.height = data.height;
+  cvs.getContext('2d', { willReadFrequently: true }).putImageData(data, 0, 0);
+}
+function pickOutFmt(v) {
+  return v === 'jpeg' ? { mime: 'image/jpeg', ext: 'jpg', q: 0.95 } : { mime: 'image/png', ext: 'png', q: undefined };
+}
+function baseName(name) {
+  const i = name.lastIndexOf('.');
+  return i > 0 ? name.slice(0, i) : name;
+}
+/** 让出主线程，避免大图处理时界面假死 */
+const yieldTick = () => new Promise(r => setTimeout(r, 0));
+
+/* =========================================================================
+ * 1. MD5（用于 MD5 密钥置乱类算法，输出 32 位小写 hex）
+ * =======================================================================*/
+const md5hex = (function () {
+  const S = [7,12,17,22, 7,12,17,22, 7,12,17,22, 7,12,17,22,
+             5, 9,14,20, 5, 9,14,20, 5, 9,14,20, 5, 9,14,20,
+             4,11,16,23, 4,11,16,23, 4,11,16,23, 4,11,16,23,
+             6,10,15,21, 6,10,15,21, 6,10,15,21, 6,10,15,21];
+  const K = new Int32Array(64);
+  for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296);
+  const enc = new TextEncoder();
+  const cache = new Map();
+
+  function digest(bytes) {
+    const len = bytes.length;
+    const total = ((len + 8 + 63) & ~63);
+    const buf = new Uint8Array(total);
+    buf.set(bytes);
+    buf[len] = 0x80;
+    const dv = new DataView(buf.buffer);
+    const bits = len * 8;
+    dv.setUint32(total - 8, bits >>> 0, true);
+    dv.setUint32(total - 4, Math.floor(bits / 4294967296), true);
+
+    let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+    const M = new Int32Array(16);
+    for (let off = 0; off < total; off += 64) {
+      for (let i = 0; i < 16; i++) M[i] = dv.getInt32(off + i * 4, true);
+      let A = a0, B = b0, C = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16)      { F = (B & C) | (~B & D);      g = i; }
+        else if (i < 32) { F = (D & B) | (~D & C);      g = (5 * i + 1) % 16; }
+        else if (i < 48) { F = B ^ C ^ D;               g = (3 * i + 5) % 16; }
+        else             { F = C ^ (B | (~D));          g = (7 * i) % 16; }
+        F = (F + A + K[i] + M[g]) | 0;
+        A = D; D = C; C = B;
+        B = (B + ((F << S[i]) | (F >>> (32 - S[i])))) | 0;
+      }
+      a0 = (a0 + A) | 0; b0 = (b0 + B) | 0; c0 = (c0 + C) | 0; d0 = (d0 + D) | 0;
+    }
+    const out = new Uint8Array(16);
+    const od = new DataView(out.buffer);
+    od.setInt32(0, a0, true); od.setInt32(4, b0, true);
+    od.setInt32(8, c0, true); od.setInt32(12, d0, true);
+    let s = '';
+    for (let i = 0; i < 16; i++) s += out[i].toString(16).padStart(2, '0');
+    return s;
+  }
+
+  return function (str) {
+    let v = cache.get(str);
+    if (v === undefined) {
+      v = digest(enc.encode(str));
+      if (cache.size < 60000) cache.set(str, v);
+    }
+    return v;
+  };
+})();
+
+/** MD5 密钥置乱：Fisher–Yates，rand 取自 MD5(key + i) 的前 7 位 hex（等价 Java 实现） */
+function md5Shuffle(len, key) {
+  const arr = new Int32Array(len);
+  for (let i = 0; i < len; i++) arr[i] = i;
+  for (let i = len - 1; i > 0; i--) {
+    const h = md5hex(key + i);
+    const rand = parseInt(h.slice(0, 7), 16) % (i + 1);
+    const t = arr[rand]; arr[rand] = arr[i]; arr[i] = t;
+  }
+  return arr;
+}
+
+/* =========================================================================
+ * 2. 小番茄：希尔伯特曲线 + 黄金分割循环位移
+ * =======================================================================*/
+/** 生成希尔伯特（Gilbert 变体）曲线经过的像素索引序列 */
+function hilbertCurve(width, height) {
+  const n = width * height;
+  const out = new Int32Array(n);
+  let pos = 0;
+
+  function gen(x, y, ax, ay, bx, by) {
+    const w = Math.abs(ax + ay);
+    const h = Math.abs(bx + by);
+    const dax = Math.sign(ax), day = Math.sign(ay);
+    const dbx = Math.sign(bx), dby = Math.sign(by);
+
+    if (h === 1) {
+      for (let i = 0; i < w; i++) { out[pos++] = x + y * width; x += dax; y += day; }
+      return;
+    }
+    if (w === 1) {
+      for (let i = 0; i < h; i++) { out[pos++] = x + y * width; x += dbx; y += dby; }
+      return;
+    }
+
+    let ax2 = Math.floor(ax / 2), ay2 = Math.floor(ay / 2);
+    let bx2 = Math.floor(bx / 2), by2 = Math.floor(by / 2);
+    const w2 = Math.abs(ax2 + ay2);
+    const h2 = Math.abs(bx2 + by2);
+
+    if (2 * w > 3 * h) {
+      if ((w2 % 2) && w > 2) { ax2 += dax; ay2 += day; }
+      gen(x, y, ax2, ay2, bx, by);
+      gen(x + ax2, y + ay2, ax - ax2, ay - ay2, bx, by);
+    } else {
+      if ((h2 % 2) && h > 2) { bx2 += dbx; by2 += dby; }
+      gen(x, y, bx2, by2, ax2, ay2);
+      gen(x + bx2, y + by2, ax, ay, bx - bx2, by - by2);
+      gen(x + (ax - dax) + (bx2 - dbx), y + (ay - day) + (by2 - dby),
+          -bx2, -by2, -(ax - ax2), -(ay - ay2));
+    }
+  }
+
+  if (width >= height) gen(0, 0, width, 0, 0, height);
+  else gen(0, 0, 0, height, width, 0);
+  return out;
+}
+
+/**
+ * 小番茄混淆 / 解混淆。
+ * @param {ImageData} src
+ * @param {number} key 偏移系数，1 等价于原工具默认值
+ * @param {boolean} decrypt
+ */
+function tomatoProcess(src, key, decrypt) {
+  const width = src.width, height = src.height;
+  const n = width * height;
+  const s = src.data;
+  const out = new Uint8ClampedArray(s.length);
+
+  const curve = hilbertCurve(width, height);
+  const golden = (Math.sqrt(5) - 1) / 2;               // ≈ 0.6180339887
+  let off = Math.round(golden * n * key) % n;
+  if (off < 0) off += n;
+
+  const loopPos = n - off;
+
+  function move(from, to) {
+    const a = from * 4, b = to * 4;
+    out[b] = s[a]; out[b + 1] = s[a + 1]; out[b + 2] = s[a + 2]; out[b + 3] = s[a + 3];
+  }
+
+  if (!decrypt) {
+    for (let i = 0; i < loopPos; i++) move(curve[i], curve[i + off]);
+    for (let i = loopPos; i < n; i++) move(curve[i], curve[i - loopPos]);
+  } else {
+    for (let i = 0; i < loopPos; i++) move(curve[i + off], curve[i]);
+    for (let i = loopPos; i < n; i++) move(curve[i - loopPos], curve[i]);
+  }
+  return new ImageData(out, width, height);
+}
+
+/* =========================================================================
+ * 3. 光棱坦克：灰度值分离 + 像素交错
+ * =======================================================================*/
+/** 按 fill 方式等比缩放并居中裁剪到 width×height（双线性插值） */
+function resizeCoverID(src, width, height) {
+  const ow = src.width, oh = src.height, sd = src.data;
+  if (width === ow && height === oh) return new ImageData(new Uint8ClampedArray(sd), ow, oh);
+
+  const origAspect = ow / oh, targetAspect = width / height;
+  let rw, rh, offX = 0, offY = 0;
+  if (origAspect > targetAspect) {
+    rh = height; rw = Math.max(Math.round(height * origAspect), width);
+    offX = Math.floor((rw - width) / 2);
+  } else {
+    rw = width; rh = Math.max(Math.round(width / origAspect), height);
+    offY = Math.floor((rh - height) / 2);
+  }
+  const out = new Uint8ClampedArray(width * height * 4);
+  const dw = Math.max(rw - 1, 1), dh = Math.max(rh - 1, 1);
+  const maxX = ow - 1, maxY = oh - 1;
+
+  for (let y = 0; y < height; y++) {
+    const srcY = ((y + offY) * (oh - 1)) / dh;
+    let y0 = Math.floor(srcY); if (y0 > maxY) y0 = maxY; if (y0 < 0) y0 = 0;
+    const y1 = y0 + 1 > maxY ? maxY : y0 + 1;
+    const wy = srcY - y0;
+    for (let x = 0; x < width; x++) {
+      const srcX = ((x + offX) * (ow - 1)) / dw;
+      let x0 = Math.floor(srcX); if (x0 > maxX) x0 = maxX; if (x0 < 0) x0 = 0;
+      const x1 = x0 + 1 > maxX ? maxX : x0 + 1;
+      const wx = srcX - x0;
+      const i00 = (y0 * ow + x0) * 4, i01 = (y0 * ow + x1) * 4;
+      const i10 = (y1 * ow + x0) * 4, i11 = (y1 * ow + x1) * 4;
+      const o = (y * width + x) * 4;
+      for (let c = 0; c < 4; c++) {
+        const v = (1 - wx) * (1 - wy) * sd[i00 + c] + wx * (1 - wy) * sd[i01 + c]
+                + (1 - wx) * wy * sd[i10 + c] + wx * wy * sd[i11 + c];
+        out[o + c] = Math.round(v);
+      }
+    }
+  }
+  return new ImageData(out, width, height);
+}
+
+/** 等比缩放到最长边不超过 maxSize */
+function resizeFitID(src, maxSize) {
+  const { width: w, height: h } = src;
+  if (w <= maxSize && h <= maxSize) return src;
+  const aspect = w / h;
+  let nw, nh;
+  if (aspect > 1) { nw = maxSize; nh = Math.min(Math.round(maxSize / aspect), maxSize); }
+  else { nh = maxSize; nw = Math.min(Math.round(maxSize * aspect), maxSize); }
+  return resizeCoverID(src, Math.max(nw, 1), Math.max(nh, 1));
+}
+
+/** 亮度灰度化（Luma 加权） */
+function toGrayID(src) {
+  const d = src.data;
+  const out = new Uint8ClampedArray(d.length);
+  for (let i = 0; i < d.length; i += 4) {
+    const g = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    out[i] = g; out[i + 1] = g; out[i + 2] = g; out[i + 3] = d[i + 3];
+  }
+  return new ImageData(out, src.width, src.height);
+}
+
+/** 对比度调整：factor = 259(c + 255) / (255(259 − c)) */
+function adjustContrastID(src, contrast) {
+  if (!contrast) return src;
+  const d = src.data;
+  const out = new Uint8ClampedArray(d.length);
+  const f = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  for (let i = 0; i < d.length; i += 4) {
+    out[i]     = Math.min(Math.max(0, f * (d[i] - 128) + 128), 255);
+    out[i + 1] = Math.min(Math.max(0, f * (d[i + 1] - 128) + 128), 255);
+    out[i + 2] = Math.min(Math.max(0, f * (d[i + 2] - 128) + 128), 255);
+    out[i + 3] = d[i + 3];
+  }
+  return new ImageData(out, src.width, src.height);
+}
+
+/** 判断某像素归属：true = 表图（可见图） */
+function encodeIsCover(x, y, slope, gap, isRow) {
+  if (slope === 0) return ((isRow ? y : x) % (gap + 1)) < gap;
+  if (isRow) return ((y / slope + x) % (gap + 1)) < gap;
+  return ((x / slope + y) % (gap + 1)) < gap;
+}
+
+/** 光棱坦克编码：把 inner 压进暗部、cover 压进亮部，按棋盘交错合成 */
+function prismEncode(inner, cover, cfg) {
+  const { innerThreshold: Ti, coverThreshold: Tc, slope, gap, isRow, isReverse } = cfg;
+  const w = inner.width, h = inner.height;
+  const id = inner.data, cd = cover.data;
+  const out = new Uint8ClampedArray(w * h * 4);
+
+  const scaleInner = isReverse
+    ? v => Math.floor(255 - Ti + (v * Ti) / 255)
+    : v => Math.floor((v * Ti) / 255);
+  const scaleCover = isReverse
+    ? v => Math.floor((v * (255 - Tc)) / 255)
+    : v => Math.floor(Tc + (v * (255 - Tc)) / 255);
+
+  let i = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++, i += 4) {
+      const isCover = encodeIsCover(x, y, slope, gap, isRow);
+      if (isCover) {
+        out[i] = scaleCover(cd[i]);
+        out[i + 1] = scaleCover(cd[i + 1]);
+        out[i + 2] = scaleCover(cd[i + 2]);
+        out[i + 3] = cd[i + 3];
+      } else {
+        out[i] = scaleInner(id[i]);
+        out[i + 1] = scaleInner(id[i + 1]);
+        out[i + 2] = scaleInner(id[i + 2]);
+        out[i + 3] = id[i + 3];
+      }
+    }
+  }
+  return new ImageData(out, w, h);
+}
+
+/** 未命中阈值区间的像素如何填充 */
+function fillCover(out, width, i, method) {
+  switch (method) {
+    case 'black': out[i] = 0; out[i + 1] = 0; out[i + 2] = 0; out[i + 3] = 255; return;
+    case 'white': out[i] = 255; out[i + 1] = 255; out[i + 2] = 255; out[i + 3] = 255; return;
+    case 'transparent': out[i] = 0; out[i + 1] = 0; out[i + 2] = 0; out[i + 3] = 0; return;
+    case 'lcopy': {
+      if ((i / 4) % width === 0) { fillCover(out, width, i, 'black'); return; }
+      out[i] = out[i - 4]; out[i + 1] = out[i - 3]; out[i + 2] = out[i - 2]; out[i + 3] = out[i - 1];
+      return;
+    }
+    case 'tcopy': {
+      const s = i - width * 4;
+      if (s < 0) { fillCover(out, width, i, 'black'); return; }
+      out[i] = out[s]; out[i + 1] = out[s + 1]; out[i + 2] = out[s + 2]; out[i + 3] = out[s + 3];
+      return;
+    }
+    default: { /* ltavg */
+      if (!i) { fillCover(out, width, i, 'black'); return; }
+      const top = i - width * 4;
+      if (top < 0) { fillCover(out, width, i, 'lcopy'); return; }
+      if ((i / 4) % width === 0) { fillCover(out, width, i, 'tcopy'); return; }
+      const left = i - 4, lt = i - width * 4 - 4;
+      out[i]     = (out[left] + out[top] + out[lt]) / 3;
+      out[i + 1] = (out[left + 1] + out[top + 1] + out[lt + 1]) / 3;
+      out[i + 2] = (out[left + 2] + out[top + 2] + out[lt + 2]) / 3;
+      out[i + 3] = (out[left + 3] + out[top + 3] + out[lt + 3]) / 3;
+      return;
+    }
+  }
+}
+
+/** 光棱坦克解码：按亮度阈值把两张图拆开，未命中区域用邻域填充 */
+function prismDecode(src, cfg) {
+  const { lowerThreshold: lo, higherThreshold: hi, method } = cfg;
+  const width = src.width, height = src.height;
+  const d = src.data;
+  const out = new Uint8ClampedArray(d.length);
+
+  if (hi <= lo) {
+    for (let i = 0; i < out.length; i += 4) { out[i] = 0; out[i + 1] = 0; out[i + 2] = 0; out[i + 3] = d[i + 3]; }
+    return new ImageData(out, width, height);
+  }
+
+  const ratio = 255 / (hi - lo);
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+    const l = r * 0.299 + g * 0.587 + b * 0.114;
+    if (l >= lo && l <= hi) {
+      out[i]     = Math.min(Math.max((r - lo) * ratio, 0), 255);
+      out[i + 1] = Math.min(Math.max((g - lo) * ratio, 0), 255);
+      out[i + 2] = Math.min(Math.max((b - lo) * ratio, 0), 255);
+      out[i + 3] = a;
+    } else {
+      fillCover(out, width, i, method);
+    }
+  }
+  return new ImageData(out, width, height);
+}
+
+/* =========================================================================
+ * 4. 其他算法（移植自 ObfuscationUtils）
+ * =======================================================================*/
+/** Logistic 混沌映射 + 排序，得到置换位置序列（等价 Java generateLogistic + getSortedPositions） */
+function logisticPositions(x0, n) {
+  const val = new Float64Array(n);
+  const idx = new Int32Array(n);
+  let x = x0;
+  val[0] = x; idx[0] = 0;
+  for (let i = 1; i < n; i++) {
+    x = 3.9999999 * x * (1 - x);
+    val[i] = x; idx[i] = i;
+  }
+  const order = Array.from(idx);
+  order.sort((a, b) => val[a] - val[b]);
+  const pos = new Int32Array(n);
+  for (let i = 0; i < n; i++) pos[i] = order[i];
+  return { pos, last: val[n - 1] };
+}
+
+/** PicEncrypt 行混淆：按混沌序列置换列 */
+function picEncryptRow(src, key, decrypt) {
+  const w = src.width, h = src.height, d = src.data;
+  const out = new Uint8ClampedArray(d.length);
+  const { pos } = logisticPositions(key, w);
+  for (let j = 0; j < h; j++) {
+    const row = j * w;
+    for (let i = 0; i < w; i++) {
+      const m = pos[i];
+      if (!decrypt) copyPx(d, out, m + row, i + row);
+      else copyPx(d, out, i + row, m + row);
+    }
+  }
+  return new ImageData(out, w, h);
+}
+
+/** PicEncrypt 行列混淆：先逐行置换列、再逐列置换行（解密顺序相反，先列后行） */
+function picEncryptRowColumn(src, key, decrypt) {
+  const w = src.width, h = src.height, d = src.data;
+  const cur = new Uint8ClampedArray(d);
+  const res = new Uint8ClampedArray(d.length);
+
+  if (!decrypt) {
+    // 第一步：行混淆 —— 逐行推进混沌序列，对每行做列置换
+    let x = key;
+    for (let j = 0; j < h; j++) {
+      const r = logisticPositions(x, w); x = r.last;
+      const off = j * w;
+      for (let i = 0; i < w; i++) copyPx(cur, res, r.pos[i] + off, i + off);
+    }
+    // 第二步：列混淆 —— 以第一步结果为输入，逐列推进混沌序列做行置换
+    cur.set(res);
+    x = key;
+    for (let i = 0; i < w; i++) {
+      const r = logisticPositions(x, h); x = r.last;
+      for (let j = 0; j < h; j++) copyPx(cur, res, i + r.pos[j] * w, i + j * w);
+    }
+    return new ImageData(res, w, h);
+  }
+
+  // 解密第一步：列解密（逐列推进混沌序列，把行还原）
+  let x = key;
+  for (let i = 0; i < w; i++) {
+    const r = logisticPositions(x, h); x = r.last;
+    for (let j = 0; j < h; j++) copyPx(cur, res, i + j * w, i + r.pos[j] * w);
+  }
+  // 解密第二步：行解密
+  cur.set(res);
+  x = key;
+  for (let j = 0; j < h; j++) {
+    const r = logisticPositions(x, w); x = r.last;
+    const off = j * w;
+    for (let i = 0; i < w; i++) copyPx(cur, res, i + off, r.pos[i] + off);
+  }
+  return new ImageData(res, w, h);
+}
+
+function copyPx(src, dst, from, to) {
+  const a = from * 4, b = to * 4;
+  dst[b] = src[a]; dst[b + 1] = src[a + 1]; dst[b + 2] = src[a + 2]; dst[b + 3] = src[a + 3];
+}
+
+/** Block 方块混淆：补边到 32 的倍数后按块置乱（输出尺寸可能变大） */
+function blockObfuscate(src, key, decrypt, bx, by) {
+  bx = bx || 32; by = by || 32;
+  const width = src.width, height = src.height, d = src.data;
+  const xa = md5Shuffle(bx, key);
+  const ya = md5Shuffle(by, key);
+
+  const nw = width % bx ? width + bx - (width % bx) : width;
+  const nh = height % by ? height + by - (height % by) : height;
+  const bw = nw / bx, bh = nh / by;
+
+  const out = new Uint8ClampedArray(nw * nh * 4);
+  for (let i = 0; i < nw; i++) {
+    for (let j = 0; j < nh; j++) {
+      let n = j;
+      let m = (xa[Math.floor(n / bh) % bx] * bw + i) % nw;
+      m = xa[Math.floor(m / bw)] * bw + (m % bw);
+      n = (ya[Math.floor(m / bw) % by] * bh + n) % nh;
+      n = ya[Math.floor(n / bh)] * bh + (n % bh);
+
+      if (!decrypt) copyPx(d, out, (m % width) + (n % height) * width, i + j * nw);
+      else copyPx(d, out, i + (j % height) * width, m + n * nw);
+    }
+  }
+  return new ImageData(out, nw, nh);
+}
+
+/** RowPixel 行像素混淆 */
+function rowPixelObfuscate(src, key, decrypt) {
+  const w = src.width, h = src.height, d = src.data;
+  const xa = md5Shuffle(w, key);
+  const out = new Uint8ClampedArray(d.length);
+  for (let i = 0; i < w; i++) {
+    for (let j = 0; j < h; j++) {
+      const m = xa[(xa[j % w] + i) % w];
+      if (!decrypt) copyPx(d, out, m + j * w, i + j * w);
+      else copyPx(d, out, i + j * w, m + j * w);
+    }
+  }
+  return new ImageData(out, w, h);
+}
+
+/** PerPixel 逐像素混淆（行、列双向置换） */
+function perPixelObfuscate(src, key, decrypt) {
+  const w = src.width, h = src.height, d = src.data;
+  const xa = md5Shuffle(w, key);
+  const ya = md5Shuffle(h, key);
+  const out = new Uint8ClampedArray(d.length);
+  for (let i = 0; i < w; i++) {
+    for (let j = 0; j < h; j++) {
+      const m = xa[(xa[j % w] + i) % w];
+      const n = ya[(ya[m % h] + j) % h];
+      if (!decrypt) copyPx(d, out, m + n * w, i + j * w);
+      else copyPx(d, out, i + j * w, m + n * w);
+    }
+  }
+  return new ImageData(out, w, h);
+}
+
+/* =========================================================================
+ * 5. 极简 ZIP 打包（仅 store 存储，无压缩，零依赖）
+ * =======================================================================*/
+const CRC_TABLE = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = -1;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ -1) >>> 0;
+}
+async function buildZip(files) {
+  const enc = new TextEncoder();
+  const now = new Date();
+  const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xffff;
+  const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xffff;
+
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const data = f.data;
+    const crc = crc32(data);
+
+    const local = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    local.set(nameBytes, 30);
+
+    const cen = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cen.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint32(42, offset, true);
+    cen.set(nameBytes, 46);
+
+    chunks.push(local, data);
+    central.push(cen);
+    offset += local.length + data.length;
+  }
+
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+
+  return new Blob(chunks.concat(central, [eocd]), { type: 'application/zip' });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* =========================================================================
+ * 6. 通用「批量处理面板」控制器
+ * =======================================================================*/
+class BatchPanel {
+  /**
+   * @param {object} o
+   *  dz, file, grid, prog, btnEnc, btnDec, btnZip, btnClear : 元素 id
+   *  tag      : 输出文件名前缀，如 'tomato'
+   *  fmt      : () => 'png' | 'jpeg'
+   *  transform: async (imageData, mode) => ImageData
+   */
+  constructor(o) {
+    this.o = o;
+    this.items = [];
+    this.busy = false;
+    this.seq = 0;
+
+    const dz = $('#' + o.dz), fi = $('#' + o.file);
+    dz.addEventListener('click', () => { if (!this.busy) fi.click(); });
+    fi.addEventListener('change', e => { this.add(e.target.files); fi.value = ''; });
+    ['dragenter', 'dragover'].forEach(ev =>
+      dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(ev =>
+      dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+    dz.addEventListener('drop', e => {
+      if (this.busy) return;
+      const fs = e.dataTransfer && e.dataTransfer.files;
+      if (fs && fs.length) this.add(fs);
+    });
+
+    $('#' + o.btnEnc).addEventListener('click', () => this.run('encrypt'));
+    $('#' + o.btnDec).addEventListener('click', () => this.run('decrypt'));
+    $('#' + o.btnZip).addEventListener('click', () => this.downloadZip());
+    $('#' + o.btnClear).addEventListener('click', () => this.clear());
+  }
+
+  async add(fileList) {
+    const files = Array.prototype.slice.call(fileList).filter(f => /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|bmp)$/i.test(f.name));
+    if (!files.length) return;
+    for (const f of files) {
+      const item = { id: ++this.seq, file: f, name: f.name, status: 'wait', w: 0, h: 0, ow: 0, oh: 0, blob: null };
+      this.items.push(item);
+      this.renderItem(item);
+      try {
+        const url = await readAsDataURL(f);
+        const img = await loadImage(url);
+        item.img = img;
+        item.data = imageToImageData(img);
+        item.w = item.data.width; item.h = item.data.height;
+        item.thumb = url;
+        this.updateItem(item);
+      } catch (err) {
+        item.status = 'err'; item.msg = err.message;
+        this.updateItem(item);
+      }
+    }
+    this.refresh();
+  }
+
+  renderItem(item) {
+    const grid = $('#' + this.o.grid);
+    const el = document.createElement('div');
+    el.className = 'item'; el.dataset.id = item.id;
+    el.innerHTML =
+      '<div class="thumb"><img alt="" /></div>' +
+      '<div class="body">' +
+        '<div class="nm"></div><div class="dim"></div><div class="st"></div>' +
+      '</div>' +
+      '<div class="acts"></div>';
+    grid.appendChild(el);
+    item.el = el;
+  }
+
+  updateItem(item) {
+    const el = item.el; if (!el) return;
+    const st = el.querySelector('.st');
+    const dim = el.querySelector('.dim');
+    const nm = el.querySelector('.nm');
+    nm.textContent = item.name;
+    nm.title = item.name;
+    const txt = { wait: '等待处理', run: '处理中…', ok: '完成', err: '失败：' + (item.msg || '') };
+    st.textContent = txt[item.status] || '';
+    st.className = 'st ' + item.status;
+
+    if (item.status === 'err') dim.textContent = item.w ? item.w + ' × ' + item.h : '';
+
+    const thumbImg = el.querySelector('.thumb img');
+    if (item.thumb) thumbImg.src = item.thumb;
+
+    if (item.ow) dim.textContent = item.w + ' × ' + item.h + '  →  ' + item.ow + ' × ' + item.oh;
+    else if (item.w) dim.textContent = item.w + ' × ' + item.h;
+
+    const acts = el.querySelector('.acts');
+    if (item.blob && item.status === 'ok') {
+      if (!acts.dataset.ready) {
+        acts.dataset.ready = '1';
+        const b = document.createElement('button');
+        b.className = 'btn sm'; b.textContent = '下载';
+        b.style.width = '100%';
+        b.addEventListener('click', () => {
+          const ext = pickOutFmt(item.fmt).ext;
+          downloadBlob(item.blob, this.o.prefix(item.mode) + baseName(item.name) + '.' + ext);
+        });
+        acts.appendChild(b);
+      }
+    } else {
+      acts.dataset.ready = '';
+      acts.innerHTML = '';
+    }
+  }
+
+  refresh() {
+    const has = this.items.length > 0;
+    const done = this.items.some(i => i.blob);
+    $('#' + this.o.btnEnc).disabled = !has || this.busy;
+    $('#' + this.o.btnDec).disabled = !has || this.busy;
+    $('#' + this.o.btnZip).disabled = !done || this.busy;
+    $('#' + this.o.btnClear).disabled = !has || this.busy;
+  }
+
+  async run(mode) {
+    if (this.busy || !this.items.length) return;
+    this.busy = true;
+    this.refresh();
+    this.items.forEach(i => { if (i.status === 'err' && !i.data) return; i.status = 'wait'; i.blob = null; i.mode = mode; this.updateItem(i); });
+    const prog = $('#' + this.o.prog), bar = prog.querySelector('i');
+    prog.classList.add('on');
+
+    let n = 0;
+    for (const item of this.items) {
+      if (!item.data) continue;
+      item.status = 'run'; this.updateItem(item);
+      await yieldTick();
+      try {
+        const res = await this.o.transform(item.data, mode);
+        const fmt = pickOutFmt(this.o.fmt());
+        const cvs = imageDataToCanvas(res);
+        item.blob = await canvasToBlob(cvs, fmt.mime, fmt.q);
+        item.fmt = this.o.fmt();
+        item.ow = res.width; item.oh = res.height;
+        item.thumb = cvs.toDataURL('image/png');
+        item.status = 'ok';
+      } catch (err) {
+        item.status = 'err'; item.msg = err.message || String(err);
+      }
+      n++;
+      bar.style.width = Math.round(n / this.items.length * 100) + '%';
+      this.updateItem(item);
+      this.refresh();
+    }
+    this.busy = false;
+    prog.classList.remove('on');
+    bar.style.width = '0%';
+    this.refresh();
+  }
+
+  async downloadZip() {
+    const done = this.items.filter(i => i.blob);
+    if (!done.length) return;
+    const mode = done[0].mode || 'encrypt';
+    if (done.length === 1) {
+      const it = done[0];
+      downloadBlob(it.blob, this.o.prefix(mode) + baseName(it.name) + '.' + pickOutFmt(it.fmt).ext);
+      return;
+    }
+    const files = [];
+    const used = new Set();
+    for (const it of done) {
+      let nm = this.o.prefix(it.mode || mode) + baseName(it.name) + '.' + pickOutFmt(it.fmt).ext;
+      while (used.has(nm)) nm = nm.replace(/(\.[a-z]+)$/, '_1$1');
+      used.add(nm);
+      files.push({ name: nm, data: new Uint8Array(await it.blob.arrayBuffer()) });
+    }
+    downloadBlob(await buildZip(files), '图片处理结果.zip');
+  }
+
+  clear() {
+    if (this.busy) return;
+    this.items = [];
+    $('#' + this.o.grid).innerHTML = '';
+    this.refresh();
+  }
+}
+
+/* =========================================================================
+ * 7. 标签页切换
+ * =======================================================================*/
+$$('nav.tabs button').forEach(b => {
+  b.addEventListener('click', () => {
+    $$('nav.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    $$('.tabpane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+  });
+});
+
+/* =========================================================================
+ * 8. 小番茄面板
+ * =======================================================================*/
+(() => {
+  const keyEl = $('#tm-key'), keyV = $('#tm-key-v');
+
+  function sync() { keyV.textContent = Number(keyEl.value || 0).toFixed(3); }
+  keyEl.addEventListener('input', sync); sync();
+
+  new BatchPanel({
+    dz: 'tm-dz', file: 'tm-file', grid: 'tm-grid', prog: 'tm-prog',
+    btnEnc: 'tm-enc', btnDec: 'tm-dec', btnZip: 'tm-zip', btnClear: 'tm-clear',
+    fmt: () => $('#tm-fmt').value,
+    prefix: mode => (mode === 'decrypt' ? '解混淆_' : '混淆_'),
+    transform: async (data, mode) => {
+      const k = Number(keyEl.value);
+      if (!isFinite(k)) throw new Error('密钥无效');
+      if (Math.abs(k) > 100000) throw new Error('密钥过大');
+      return tomatoProcess(data, k, mode === 'decrypt');
+    }
+  });
+})();
+
+/* =========================================================================
+ * 9. 更多算法面板
+ * =======================================================================*/
+(() => {
+  const algEl = $('#mr-alg'), keyEl = $('#mr-key'), noteEl = $('#mr-note');
+  const KEY_HINT = {
+    picRow: { v: '0~1 浮点', d: '0.114514' },
+    picRowCol: { v: '0~1 浮点', d: '0.114514' },
+    block: { v: '任意字符串', d: '114514' },
+    rowPixel: { v: '任意字符串', d: '114514' },
+    perPixel: { v: '任意字符串', d: '114514' }
+  };
+  function syncAlg() {
+    const h = KEY_HINT[algEl.value] || KEY_HINT.picRow;
+    $('#mr-key-v').textContent = h.v;
+    keyEl.value = h.d;
+    if (algEl.value === 'block') {
+      noteEl.innerHTML = '<b>方块混淆</b>会把图片尺寸补边到 32 的倍数，因此<b>输出尺寸可能比原图略大</b>，' +
+        '且解混淆时必须用<b>同一密钥</b>（可为任意字符串）。<br />' +
+        '<b>注意：</b>当原图宽高不是 32 的倍数时，补边会造成边界像素无法完全还原（与原库行为一致）；' +
+        '若要求无损，请先把图片裁成 32 的倍数。';
+    } else if (algEl.value === 'picRow' || algEl.value === 'picRowCol') {
+      noteEl.innerHTML = '<b>PicEncrypt 系列</b>的密钥必须是 <b>0~1 之间的浮点数</b>（默认 <code class="k">0.114514</code>），' +
+        '它是 Logistic 映射的初始值，不同初始值会产生完全不同的置换序列。';
+    } else {
+      noteEl.innerHTML = '<b>' + (algEl.value === 'rowPixel' ? '行像素混淆' : '逐像素混淆') +
+        '</b>的密钥可为任意字符串（内部用 MD5 生成置乱序列）。逐像素打散最彻底，行像素只在行内打乱。';
+    }
+  }
+  algEl.addEventListener('change', syncAlg); syncAlg();
+
+  function transform(data, mode) {
+    const dec = mode === 'decrypt';
+    const key = keyEl.value;
+    switch (algEl.value) {
+      case 'picRow': {
+        const k = parseFloat(key);
+        if (!isFinite(k) || k <= 0 || k >= 1) throw new Error('密钥必须是 0~1 之间的浮点数');
+        return picEncryptRow(data, k, dec);
+      }
+      case 'picRowCol': {
+        const k = parseFloat(key);
+        if (!isFinite(k) || k <= 0 || k >= 1) throw new Error('密钥必须是 0~1 之间的浮点数');
+        return picEncryptRowColumn(data, k, dec);
+      }
+      case 'block': return blockObfuscate(data, key, dec);
+      case 'rowPixel': return rowPixelObfuscate(data, key, dec);
+      default: return perPixelObfuscate(data, key, dec);
+    }
+  }
+
+  new BatchPanel({
+    dz: 'mr-dz', file: 'mr-file', grid: 'mr-grid', prog: 'mr-prog',
+    btnEnc: 'mr-enc', btnDec: 'mr-dec', btnZip: 'mr-zip', btnClear: 'mr-clear',
+    fmt: () => $('#mr-fmt').value,
+    prefix: mode => (mode === 'decrypt' ? '解混淆_' : '混淆_'),
+    transform: async (data, mode) => transform(data, mode)
+  });
+})();
+
+/* =========================================================================
+ * 10. 光棱坦克面板
+ * =======================================================================*/
+(() => {
+  /* --- 模式切换 --- */
+  $$('#pr-mode button').forEach(b => {
+    b.addEventListener('click', () => {
+      $$('#pr-mode button').forEach(x => x.classList.toggle('on', x === b));
+      const enc = b.dataset.m === 'enc';
+      $('#pr-enc').style.display = enc ? '' : 'none';
+      $('#pr-dec').style.display = enc ? 'none' : '';
+      $('#pr-modedesc').textContent = enc
+        ? '把「里图」压进暗部、把「表图」放进亮部，按棋盘格交错 —— 正常看是表图，调阈值后显出里图。'
+        : '载入混淆图后拖动阈值滑杆，实时把隐藏的画面「拉」出来。';
+    });
+  });
+
+  /* --- 单图拖放区通用绑定 --- */
+  function bindSingleImage(dzId, fileId, onLoad) {
+    const dz = $('#' + dzId), fi = $('#' + fileId);
+    dz.addEventListener('click', () => fi.click());
+    fi.addEventListener('change', e => { if (e.target.files[0]) handle(e.target.files[0]); fi.value = ''; });
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+    dz.addEventListener('drop', e => {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) handle(f);
+    });
+    function handle(file) {
+      if (!/^image\//.test(file.type) && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) return;
+      readAsDataURL(file).then(loadImage).then(img => {
+        dz.classList.add('has');
+        dz.innerHTML = '<img class="dz-thumb" alt="" /><div class="dz-name"></div>';
+        dz.querySelector('img').src = img.src;
+        dz.querySelector('.dz-name').textContent = file.name;
+        onLoad(img, file);
+      }).catch(err => {
+        dz.classList.remove('has');
+        dz.innerHTML = '<div class="big"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--err);margin:0 auto"><path d="M12 4.5 21 19.5H3L12 4.5Z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg></div><div>' + esc(err.message) + '</div>';
+      });
+    }
+  }
+
+  /* --- 编码 --- */
+  const st = {
+    inner: null, cover: null,
+    out: null, outBlob: null, outFmt: 'png',
+    view: 'inner'
+  };
+
+  const R = {
+    inTh: $('#in-th'), inCt: $('#in-ct'), inGray: $('#in-gray'),
+    cvTh: $('#cv-th'), cvCt: $('#cv-ct'), cvGray: $('#cv-gray'),
+    dir: $('#bl-dir'), slope: $('#bl-slope'), gap: $('#bl-gap'),
+    max: $('#bl-max'), fmt: $('#bl-fmt'), rev: $('#bl-rev')
+  };
+
+  function bindRange(el, labelId, fmt) {
+    const lab = $('#' + labelId);
+    const upd = () => { lab.textContent = fmt ? fmt(el.value) : el.value; };
+    el.addEventListener('input', upd); upd();
+  }
+  bindRange(R.inTh, 'in-th-v'); bindRange(R.inCt, 'in-ct-v');
+  bindRange(R.cvTh, 'cv-th-v'); bindRange(R.cvCt, 'cv-ct-v');
+  bindRange(R.max, 'bl-max-v');
+  [R.dir, R.slope, R.gap, R.fmt, R.rev, R.inGray, R.cvGray,
+   R.inTh, R.inCt, R.cvTh, R.cvCt, R.max].forEach(el => {
+    el.addEventListener('input', schedule);
+    el.addEventListener('change', schedule);
+  });
+
+  let raf = 0;
+  function schedule() {
+    $('#bl-slope-v').textContent = R.slope.value;
+    $('#bl-gap-v').textContent = R.gap.value;
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { raf = 0; build(); });
+  }
+
+  bindSingleImage('in-dz', 'in-file', (img, file) => { st.inner = { img: img, file: file }; build(); });
+  bindSingleImage('cv-dz', 'cv-file', (img, file) => { st.cover = { img: img, file: file }; build(); });
+
+  function prep(imgEl) {
+    let d = imageToImageData(imgEl);
+    d = resizeFitID(d, Math.max(64, Math.min(10000, Number(R.max.value) || 1200)));
+    return d;
+  }
+
+  function build() {
+    const outCvs = $('#out-cvs'), testCvs = $('#out-test'), info = $('#out-info');
+    if (!st.inner || !st.cover) {
+      outCvs.width = outCvs.height = 1; testCvs.width = testCvs.height = 1;
+      info.textContent = !st.inner && !st.cover ? '等待两张图就绪…'
+        : (st.inner ? '还缺一张给「表图」' : '还缺一张给「里图」');
+      $('#pr-save').disabled = true;
+      st.out = null;
+      return;
+    }
+
+    let Ti = Number(R.inTh.value), Tc = Number(R.cvTh.value);
+    if (Ti >= Tc) {
+      info.innerHTML = '<span style="color:var(--err)">里图阈值（' + Ti + '）必须小于表图阈值（' + Tc + '），否则两图会互相串色。</span>';
+      $('#pr-save').disabled = true;
+      st.out = null;
+      return;
+    }
+
+    let innerD = prep(st.inner.img);
+    let coverD = resizeCoverID(prep(st.cover.img), innerD.width, innerD.height);
+    if (R.inGray.checked) innerD = toGrayID(innerD);
+    if (R.cvGray.checked) coverD = toGrayID(coverD);
+    innerD = adjustContrastID(innerD, Number(R.inCt.value));
+    coverD = adjustContrastID(coverD, Number(R.cvCt.value));
+
+    const slope = Math.max(0.1, Number(R.slope.value) || 1);
+    const gap = Math.max(1, Math.round(Number(R.gap.value) || 1));
+    const isRow = R.dir.value === 'row';
+    const isReverse = R.rev.checked;
+
+    const res = prismEncode(innerD, coverD, {
+      innerThreshold: Ti, coverThreshold: Tc, slope: slope, gap: gap, isRow: isRow, isReverse: isReverse
+    });
+
+    st.out = res;
+    st.outFmt = R.fmt.value;
+    drawToCanvas(outCvs, res);
+    info.textContent = res.width + ' × ' + res.height +
+      ' · 里图 [' + (isReverse ? 255 - Ti : 0) + '~' + (isReverse ? 255 : Ti) + ']' +
+      ' · 表图 [' + (isReverse ? 0 : Tc) + '~' + (isReverse ? 255 - Tc : 255) + ']';
+    $('#pr-save').disabled = false;
+
+    renderTest();
+  }
+
+  function renderTest() {
+    const testCvs = $('#out-test'), tinfo = $('#out-test-info');
+    if (!st.out) return;
+    const Ti = Number(R.inTh.value);
+    const cfg = st.view === 'inner'
+      ? { lowerThreshold: 0, higherThreshold: Math.max(Ti, 1), method: 'ltavg' }
+      : { lowerThreshold: Math.max(Ti, 1), higherThreshold: 255, method: 'ltavg' };
+    const dec = prismDecode(st.out, cfg);
+    drawToCanvas(testCvs, dec);
+    tinfo.textContent = st.view === 'inner'
+      ? '阈值 ' + cfg.lowerThreshold + '~' + cfg.higherThreshold + '（里图）'
+      : '阈值 ' + cfg.lowerThreshold + '~' + cfg.higherThreshold + '（表图）';
+  }
+
+  $('#ts-inner').addEventListener('click', () => { st.view = 'inner'; renderTest(); });
+  $('#ts-cover').addEventListener('click', () => { st.view = 'cover'; renderTest(); });
+
+  $('#pr-save').addEventListener('click', async () => {
+    if (!st.out) return;
+    const f = pickOutFmt(st.outFmt);
+    const blob = await canvasToBlob(imageDataToCanvas(st.out), f.mime, f.q);
+    downloadBlob(blob, '光棱坦克_' + Date.now() + '.' + f.ext);
+  });
+
+  /* --- 解码 --- */
+  const dcSrc = { img: null, data: null };
+  const D = {
+    lo: $('#dc-lo'), hi: $('#dc-hi'), method: $('#dc-method'), ct: $('#dc-ct')
+  };
+  bindRange(D.lo, 'dc-lo-v'); bindRange(D.hi, 'dc-hi-v'); bindRange(D.ct, 'dc-ct-v');
+
+  let dcRaf = 0;
+  function dcSchedule() {
+    if (dcRaf) cancelAnimationFrame(dcRaf);
+    dcRaf = requestAnimationFrame(() => { dcRaf = 0; dcRender(); });
+  }
+  [D.lo, D.hi, D.method, D.ct].forEach(el => {
+    el.addEventListener('input', dcSchedule);
+    el.addEventListener('change', dcSchedule);
+  });
+
+  bindSingleImage('dc-dz', 'dc-file', (img, file) => {
+    dcSrc.img = img;
+    dcSrc.data = imageToImageData(img);
+    $('#dc-info').textContent = '· ' + file.name + ' · ' + dcSrc.data.width + ' × ' + dcSrc.data.height;
+    $('#dc-save').disabled = false;
+    $('#dc-orig').disabled = false;
+    dcRender();
+  });
+
+  function dcRender() {
+    const cvs = $('#dc-cvs');
+    if (!dcSrc.data) { cvs.width = cvs.height = 1; return; }
+    const lo = Number(D.lo.value), hi = Number(D.hi.value);
+    const raw = prismDecode(dcSrc.data, { lowerThreshold: lo, higherThreshold: hi, method: D.method.value });
+    const out = adjustContrastID(raw, Number(D.ct.value));
+    drawToCanvas(cvs, out);
+  }
+
+  function setPreset(lo, hi) {
+    D.lo.value = lo; D.hi.value = hi;
+    $('#dc-lo-v').textContent = lo; $('#dc-hi-v').textContent = hi;
+    dcRender();
+  }
+  $('#dc-p1').addEventListener('click', () => setPreset(0, Number(R.inTh.value) || 24));
+  $('#dc-p2').addEventListener('click', () => setPreset(Number(R.cvTh.value) || 42, 255));
+  $('#dc-p3').addEventListener('click', () => setPreset(0, 255));
+  $('#dc-fit').addEventListener('click', () => {
+    const box = $('#dc-box');
+    box.classList.toggle('fit');
+  });
+
+  $('#dc-save').addEventListener('click', async () => {
+    if (!dcSrc.data) return;
+    const lo = Number(D.lo.value), hi = Number(D.hi.value);
+    const raw = prismDecode(dcSrc.data, { lowerThreshold: lo, higherThreshold: hi, method: D.method.value });
+    const out = adjustContrastID(raw, Number(D.ct.value));
+    const blob = await canvasToBlob(imageDataToCanvas(out), 'image/png');
+    downloadBlob(blob, '显形_' + lo + '_' + hi + '.png');
+  });
+
+  $('#dc-orig').addEventListener('click', async () => {
+    if (!dcSrc.data) return;
+    const blob = await canvasToBlob(imageDataToCanvas(dcSrc.data), 'image/png');
+    downloadBlob(blob, '原图.png');
+  });
+
+  /* 初始占位 */
+  $('#out-cvs').width = $('#out-cvs').height = 1;
+  $('#out-test').width = $('#out-test').height = 1;
+  $('#dc-cvs').width = $('#dc-cvs').height = 1;
+})();
+</script>
+</body>
+</html>
