@@ -2,6 +2,9 @@
 .workbuddy/
 .claude/
 
+# 本机分析 / 探索脚本（不随仓库发布，避免 git add -A 误提交）
+tests/tomato-*.mjs
+
 # 系统 / 编辑器杂项
 .DS_Store
 Thumbs.db

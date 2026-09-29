@@ -135,6 +135,7 @@
   .item .body{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px}
   .item .nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .item .dim{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .item .xinfo{font-size:10.5px;color:var(--muted);line-height:1.5;white-space:pre-line;font-variant-numeric:tabular-nums}
   .item .st{font-size:11px;font-weight:600}
   .st.wait{color:var(--muted)} .st.run{color:var(--prism)} .st.ok{color:var(--ok)} .st.err{color:var(--err)}
   .item .acts{padding:0 10px 10px}
@@ -216,6 +217,10 @@
           <input type="number" id="tm-key" value="1" step="0.001" min="-1000" max="1000" />
         </div>
         <div class="fld">
+          <label>处理次数 <span class="val" id="tm-times-v">1 次</span></label>
+          <input type="number" id="tm-times" value="1" step="1" min="1" max="1000000" />
+        </div>
+        <div class="fld">
           <label>输出格式</label>
           <select id="tm-fmt">
             <option value="png" selected>PNG（无损，推荐）</option>
@@ -223,6 +228,7 @@
           </select>
         </div>
       </div>
+      <div class="note" id="tm-times-note" style="display:none"></div>
 
       <div class="note">
         <b>密钥必须一致才能还原。</b>密钥 <code class="k">1.000</code> 等价于原始小番茄工具的默认偏移
@@ -230,9 +236,9 @@
         <code class="k">round(0.618&sup2; &times; W &times; H)</code>。
       </div>
       <div class="note warn">
-        <b>请保持 PNG 输出。</b>混淆后的图像是高频噪声纹理，JPEG 的 DCT 量化会把它压坏
-        —— 实测「混淆 → JPEG → 解混淆」的平均像素误差约 <b>32/255</b>（PNG 为 <b>0</b>，逐像素无损）。
-        只有在必须与旧工具产物保持一致时才改用 JPEG。
+        <b>建议保持 PNG 输出。</b>PNG <b>逐像素无损</b>（实测往返误差 0）；JPEG 质量 0.95 对照片类图
+        平均误差约 <b>1.2/255</b>（肉眼几乎无感），但对细节极密的图可能到 <b>32/255</b>，且每次保存都会累积。
+        只有在必须与旧工具产物互通时才改用 JPEG。
       </div>
       <div class="note">
         <b>关于透明图：</b>浏览器 canvas 对半透明像素会做 alpha 预乘，<b>含半透明区域的图片</b>往返会有
@@ -496,21 +502,59 @@ out[ curve[(i + offset) mod N] ] = src[ curve[i] ]
 <span class="c">// 解混淆：反过来搬</span>
 out[ curve[i] ] = src[ curve[(i + offset) mod N] ]</pre>
       <p>
-        因为「沿曲线位移」而不是「按行位移」，曲线的连续性把位移带来的结构痕迹彻底打散 ——
-        这是它比简单行列置换更难看出规律的原因。同时它<b>完全可逆且不丢像素</b>（前提是输出用无损格式）。
+        因为「沿曲线位移」而不是「按行位移」，曲线在二维上的跳变把**整体构图**彻底打乱 ——
+        一块连贯的色块会被搬到画布的另一头，所以看内容完全认不出。但要注意：它打乱的是
+        <b>全局位置</b>，不是<b>局部平滑度</b>。曲线的空间局部性意味着「图上相邻」的像素在曲线序列里也往往
+        只差一百多步（随机两像素则差上万步），而位移不改变曲线上的邻接关系，所以混淆图的相邻像素差
+        仍只有随机置换的约 <b>4%</b> —— 这正是官方宣称「保持空间相关性、压缩后仍能还原」的真实机制。同时它<b>完全可逆且不丢像素</b>（前提是输出用无损格式）。
       </p>
       <table class="t">
         <tr><th>项目</th><th>说明</th></tr>
         <tr><td>曲线生成</td><td>递归分形，按宽高比 <code class="k">2w &gt; 3h</code> 切换切分策略，<code class="k">w==1</code> 或 <code class="k">h==1</code> 时线性收尾</td></tr>
         <tr><td>偏移量</td><td><code class="k">round(0.6180339887 &times; N &times; key)</code>，再对 <code class="k">N</code> 取模</td></tr>
         <tr><td>时间复杂度</td><td>O(N)，N 为像素总数</td></tr>
-        <tr><td>可逆性</td><td>是（同一密钥取逆置换）</td></tr>
+        <tr><td>可逆性</td><td>是（同一密钥取逆置换）——但<b>仅限宽高不变的图</b>；缩放 / 裁剪 / 旋转会同时改变曲线顺序与偏移量，逆置换立刻失效，必然还原成乱码</td></tr>
         <tr><td>安全性</td><td><b>弱</b>：密钥只是一个标量，已知算法可暴力枚举</td></tr>
       </table>
+      <h4 class="sec">3. 连续混淆 n 次，会发生什么（本工具的「处理次数」就是干这个）</h4>
+      <p>
+        每次混淆都是「沿<b>同一条</b>曲线位移 <code class="k">O</code>」，而位移是可以叠加的，于是：
+      </p>
+<pre class="code"><span class="c">// n 次混淆 == 曲线空间的一次位移 n·O</span>
+E^n(img)  ≡  shift(img, (n × O) mod N)          <span class="c">// 逐像素完全等价，不需要真的循环 n 遍</span>
+
+<span class="c">// 位移在 Z_N 中生成的循环子群，阶（也就是「可见周期」）为：</span>
+m = N / gcd(O, N)
+
+∴  <b>混淆 n 次 与 混淆 n + m 次，输出完全相同</b>
+∴  <b>混淆 m 次 == 什么都没做（结果与原图逐像素一致）</b></pre>
+      <p>
+        这两个推论有两个很实际的后果：<b>①「这张图被混淆了几次」在数学上无法确定</b> ——
+        只能确定到模 <code class="k">m</code>，混淆 3 次和混淆 503 次（100×100 时 m=500）产出的文件一模一样，
+        任何算法都区分不了，不是方法不够聪明，而是信息根本不存在；
+        <b>② m 可以很小</b> —— 80×45 只有 <code class="k">144</code>，也就是那张图最多只有 144 种不同外观。
+        本工具会在每张结果卡片上标出它的 <code class="k">N / O / m / 等效偏移</code>，
+        并提示「这次操作是否等于什么都没做」。
+      </p>
+      <table class="t">
+        <tr><th>尺寸</th><th>N</th><th>O</th><th>可见周期 m</th><th>含义</th></tr>
+        <tr><td>80×45</td><td>3,600</td><td>2,225</td><td><b>144</b></td><td>混淆 144 次 = 原图；只有 144 种外观</td></tr>
+        <tr><td>100×100</td><td>10,000</td><td>6,180</td><td>500</td><td>混淆 3 次 ≡ 混淆 503 次</td></tr>
+        <tr><td>1920×1080</td><td>2,073,600</td><td>1,281,555</td><td>15,360</td><td>次数只能确定到模 15360</td></tr>
+        <tr><td>1170×1553</td><td>1,817,010</td><td>1,122,974</td><td>908,505</td><td>次数只能确定到模 908505</td></tr>
+        <tr><td>2160×3840</td><td>8,294,400</td><td>5,126,221</td><td>8,294,400</td><td>几乎不重复（m = N）</td></tr>
+      </table>
       <div class="note warn">
-        <b>格式坑：</b>原始工具输出固定为 JPEG（质量 0.95），有损压缩会让每个像素产生 ±2 左右误差，
-        反复「混淆→解混淆」会累积噪点。<b>本工具默认输出 PNG</b>，做到真正无损；
+        <b>格式坑：</b>原始工具输出固定为 JPEG（质量 0.95）。实测「混淆→JPEG→解混淆」对<b>照片类图</b>
+        平均误差只有 <b>1.18/255</b>（几乎无感），但细节极密的图可达 <b>32/255</b>。
+        <b>本工具默认输出 PNG</b>，做到逐像素无损（实测误差 0）；
         若必须与旧工具互通，再切到 JPEG 选项。
+      </div>
+      <div class="note">
+        <b>只在同尺寸下可还原。</b>曲线遍历顺序与偏移量 <code class="k">O</code> 都<b>只由宽 × 高决定</b>：
+        同尺寸重新编码（JPEG/WebP 压缩）不影响可还原性；
+        但一旦<b>缩放 / 裁剪 / 旋转</b>，宽高变了，曲线与 <code class="k">O</code> 同时改变，
+        逆置换就作用在错误的序列上 —— <b>必然还原成乱码</b>，不是「画质差一点」。
       </div>
     </div>
 
@@ -770,6 +814,7 @@ function md5Shuffle(len, key) {
 /* =========================================================================
  * 2. 小番茄：希尔伯特曲线 + 黄金分割循环位移
  * =======================================================================*/
+const GOLDEN_RATIO = (Math.sqrt(5) - 1) / 2;   // ≈ 0.6180339887，黄金分割共轭
 /** 生成希尔伯特（Gilbert 变体）曲线经过的像素索引序列 */
 function hilbertCurve(width, height) {
   const n = width * height;
@@ -827,7 +872,7 @@ function tomatoProcess(src, key, decrypt) {
   const out = new Uint8ClampedArray(s.length);
 
   const curve = hilbertCurve(width, height);
-  const golden = (Math.sqrt(5) - 1) / 2;               // ≈ 0.6180339887
+  const golden = GOLDEN_RATIO;                          // ≈ 0.6180339887
   let off = Math.round(golden * n * key) % n;
   if (off < 0) off += n;
 
@@ -844,6 +889,52 @@ function tomatoProcess(src, key, decrypt) {
   } else {
     for (let i = 0; i < loopPos; i++) move(curve[i + off], curve[i]);
     for (let i = loopPos; i < n; i++) move(curve[i - loopPos], curve[i]);
+  }
+  return new ImageData(out, width, height);
+}
+
+/* ---------------------------------------------------------------------
+ * 小番茄：手动指定次数的混淆 / 解混淆
+ *
+ * 关键性质：每次混淆都是「沿同一条希尔伯特曲线位移 O」，位移在曲线空间里可叠加，
+ * 所以连续混淆 times 次 == 一次位移 (times × O) mod N，且结果逐像素完全相同。
+ * 因此无论次数填多大，都只跑一趟搬运，代价与 1 次相同（无需循环 times 遍）。
+ * 注意：位移在 Z_N 中生成阶为 m = N / gcd(O, N) 的循环群，
+ *      故 times 与 times + m 输出完全一致 —— 次数只能确定到模 m。
+ * ------------------------------------------------------------------- */
+function gcdInt(a, b) { while (b) { const t = a % b; a = b; b = t; } return a; }
+
+/** 记录某个尺寸下的位移结构参数（用于界面提示） */
+function tomatoShiftInfo(width, height, key, times, decrypt) {
+  const n = width * height;
+  if (!n) return null;
+  const O = ((Math.round(GOLDEN_RATIO * n * key) % n) + n) % n;
+  const total = ((O * times) % n + n) % n;          // 投影到 [0, n)
+  const m = n / gcdInt(O, n);                        // 位移子群的阶 = 可见周期
+  return {
+    n: n, O: O, delta: total, m: m,
+    dir: decrypt ? -1 : 1,
+    noop: total === 0,                              // 等价于「什么都没做」
+    wrapped: times >= m,                            // 次数已经绕了一圈以上
+    residue: times % m
+  };
+}
+
+/** 只做一次搬运，等效于连续混淆/解混淆 times 次 */
+function tomatoApplyN(src, key, times, decrypt) {
+  const width = src.width, height = src.height, n = width * height;
+  const O = ((Math.round(GOLDEN_RATIO * n * key) % n) + n) % n;
+  const total = ((O * times) % n + n) % n;
+  // 在 curve 空间做一次循环位移：dst[curve[(i+d) % N]] = src[curve[i]]
+  const d = decrypt ? ((n - total) % n) : total;
+
+  const curve = hilbertCurve(width, height);
+  const s = src.data;
+  const out = new Uint8ClampedArray(s.length);
+  for (let i = 0; i < n; i++) {
+    const to = curve[(i + d) % n] * 4, from = curve[i] * 4;
+    out[to] = s[from]; out[to + 1] = s[from + 1];
+    out[to + 2] = s[from + 2]; out[to + 3] = s[from + 3];
   }
   return new ImageData(out, width, height);
 }
@@ -1328,6 +1419,7 @@ class BatchPanel {
       '<div class="thumb"><img alt="" /></div>' +
       '<div class="body">' +
         '<div class="nm"></div><div class="dim"></div><div class="st"></div>' +
+        '<div class="xinfo"></div>' +
       '</div>' +
       '<div class="acts"></div>';
     grid.appendChild(el);
@@ -1352,6 +1444,13 @@ class BatchPanel {
 
     if (item.ow) dim.textContent = item.w + ' × ' + item.h + '  →  ' + item.ow + ' × ' + item.oh;
     else if (item.w) dim.textContent = item.w + ' × ' + item.h;
+
+    const xinfo = el.querySelector('.xinfo');
+    if (xinfo) {
+      xinfo.textContent = item.extra || '';
+      xinfo.style.display = item.extra ? '' : 'none';
+      xinfo.style.color = item.extraWarn ? 'var(--warn)' : 'var(--muted)';
+    }
 
     const acts = el.querySelector('.acts');
     if (item.blob && item.status === 'ok') {
@@ -1395,7 +1494,7 @@ class BatchPanel {
       item.status = 'run'; this.updateItem(item);
       await yieldTick();
       try {
-        const res = await this.o.transform(item.data, mode);
+        const res = await this.o.transform(item.data, mode, item);
         const fmt = pickOutFmt(this.o.fmt());
         const cvs = imageDataToCanvas(res);
         item.blob = await canvasToBlob(cvs, fmt.mime, fmt.q);
@@ -1460,20 +1559,74 @@ $$('nav.tabs button').forEach(b => {
  * =======================================================================*/
 (() => {
   const keyEl = $('#tm-key'), keyV = $('#tm-key-v');
+  const timesEl = $('#tm-times'), timesV = $('#tm-times-v'), timesNote = $('#tm-times-note');
+  const btnEnc = $('#tm-enc'), btnDec = $('#tm-dec');
 
-  function sync() { keyV.textContent = Number(keyEl.value || 0).toFixed(3); }
-  keyEl.addEventListener('input', sync); sync();
+  const readTimes = () => {
+    let t = Math.floor(Number(timesEl.value));
+    if (!isFinite(t) || t < 1) t = 1;
+    if (t > 1000000) t = 1000000;
+    return t;
+  };
+
+  function sync() {
+    keyV.textContent = Number(keyEl.value || 0).toFixed(3);
+    const t = readTimes();
+    timesV.textContent = t + ' 次';
+    btnEnc.textContent = t === 1 ? '混淆' : '混淆 ' + t + ' 次';
+    btnDec.textContent = t === 1 ? '解混淆' : '解混淆 ' + t + ' 次';
+
+    if (t === 1) {
+      timesNote.style.display = 'none';
+    } else {
+      timesNote.style.display = '';
+      timesNote.className = 'note';
+      timesNote.innerHTML =
+        '<b>已选择连续处理 ' + t + ' 次。</b>小番茄每次都是「沿同一条曲线位移 O」，而位移是可叠加的：' +
+        '连续 ' + t + ' 次 ≡ 一次位移 <code class="k">(' + t + ' &times; O) mod N</code> —— ' +
+        '所以本工具只跑一趟搬运，结果与手动点 ' + t + ' 次<b>逐像素完全相同</b>。' +
+        '每张图的等效偏移与「可见周期 m」显示在下方卡片上。';
+    }
+  }
+  keyEl.addEventListener('input', sync);
+  timesEl.addEventListener('input', sync);
+  timesEl.addEventListener('change', sync);
+  sync();
 
   new BatchPanel({
     dz: 'tm-dz', file: 'tm-file', grid: 'tm-grid', prog: 'tm-prog',
     btnEnc: 'tm-enc', btnDec: 'tm-dec', btnZip: 'tm-zip', btnClear: 'tm-clear',
     fmt: () => $('#tm-fmt').value,
     prefix: mode => (mode === 'decrypt' ? '解混淆_' : '混淆_'),
-    transform: async (data, mode) => {
+    transform: async (data, mode, item) => {
       const k = Number(keyEl.value);
       if (!isFinite(k)) throw new Error('密钥无效');
       if (Math.abs(k) > 100000) throw new Error('密钥过大');
-      return tomatoProcess(data, k, mode === 'decrypt');
+      const t = readTimes();
+      const decrypt = mode === 'decrypt';
+      const info = tomatoShiftInfo(data.width, data.height, k, t, decrypt);
+      const out = tomatoApplyN(data, k, t, decrypt);
+
+      if (item && info) {
+        const lines = [
+          'N=' + info.n + ' · O=' + info.O,
+          '可见周期 m=' + info.m
+        ];
+        if (t > 1) lines.push(t + ' 次 → 等效偏移 ' + info.delta);
+        item.extra = lines.join('\n');
+        item.extraWarn = false;
+
+        if (info.noop) {
+          item.extra = 'N=' + info.n + ' · 可见周期 m=' + info.m +
+            '\n' + t + ' 次是周期 m 的整数倍\n→ 结果与原图完全相同（等于没做）';
+          item.extraWarn = true;
+          item.msg = '次数是可见周期的整数倍，没有产生任何变化';
+        } else if (info.wrapped) {
+          item.extra += '\n已绕行 ' + Math.floor(t / info.m) + ' 圈\n等价于只做 ' + info.residue + ' 次';
+          item.extraWarn = true;
+        }
+      }
+      return out;
     }
   });
 })();

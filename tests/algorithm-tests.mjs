@@ -49,7 +49,8 @@ globalThis.FileReader = class {};
 let A;
 try {
   A = new Function(code + `
-  ;return { md5hex, hilbertCurve, tomatoProcess, logisticPositions,
+  ;return { md5hex, hilbertCurve, tomatoProcess, tomatoApplyN, tomatoShiftInfo, gcdInt,
+            logisticPositions,
             picEncryptRow, picEncryptRowColumn, blockObfuscate,
             rowPixelObfuscate, perPixelObfuscate, md5Shuffle,
             prismEncode, prismDecode, encodeIsCover, crc32, buildZip,
@@ -157,6 +158,43 @@ for (const [w, h] of [[64, 64], [80, 45], [33, 17], [128, 128]]) {
   }
   ok('像素搬运方向与公式一致（dst=curve[i+offset] ← src=curve[i]）', match === total, match + '/' + total);
 }
+
+/* ================= 3b. 小番茄：手动指定次数（单趟等效位移） ================= */
+section('3b) 小番茄 · 手动次数 tomatoApplyN（必须与逐次调用逐像素一致）');
+for (const [w, h] of [[64, 64], [80, 45], [100, 100]]) {
+  const src = rndImage(w, h);
+  const n = w * h;
+  const O = ((Math.round(((Math.sqrt(5) - 1) / 2) * n) % n) + n) % n;
+  const m = n / A.gcdInt(O, n);
+
+  for (const times of [1, 2, 3, 5, 7]) {
+    // 参考：老老实实循环 times 次
+    let encRef = src;
+    for (let k = 0; k < times; k++) encRef = A.tomatoProcess(encRef, 1, false);
+    ok(`${w}x${h}: 混淆 ${times} 次 == tomatoApplyN(${times})`, same(A.tomatoApplyN(src, 1, times, false), encRef));
+
+    let decRef = src;
+    for (let k = 0; k < times; k++) decRef = A.tomatoProcess(decRef, 1, true);
+    ok(`${w}x${h}: 解混淆 ${times} 次 == tomatoApplyN(${times}, decrypt)`, same(A.tomatoApplyN(src, 1, times, true), decRef));
+  }
+
+  // 次数往返：混淆 t 次再解混淆 t 次 == 原图
+  for (const times of [1, 4, 13]) {
+    const back = A.tomatoApplyN(A.tomatoApplyN(src, 1, times, false), 1, times, true);
+    ok(`${w}x${h}: 混淆 ${times} 次 → 解混淆 ${times} 次 无损还原`, same(back, src));
+  }
+
+  // times = m（可见周期）时等于什么都没做
+  ok(`${w}x${h}: tomatoApplyN(m=${m}) 结果与原图逐像素相同`, same(A.tomatoApplyN(src, 1, m, false), src));
+  // 界面提示用的结构参数
+  const info = A.tomatoShiftInfo(w, h, 1, 3, false);
+  ok(`${w}x${h}: tomatoShiftInfo 的 m/delta 自洽`,
+     info.m === m && info.delta === ((3 * O) % n) && info.residue === 3 % m && info.wrapped === (3 >= m),
+     `m=${info.m} delta=${info.delta}`);
+  const noopInfo = A.tomatoShiftInfo(w, h, 1, m, false);
+  ok(`${w}x${h}: tomatoShiftInfo 能标出 no-op`, noopInfo.noop === true);
+}
+
 
 /* ================= 4. 光棱坦克 ================= */
 section('4) 光棱坦克 prismEncode / prismDecode');
